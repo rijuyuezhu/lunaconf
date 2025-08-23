@@ -1,0 +1,17 @@
+[project]
+name = "lunaconf"
+version = "0.1.0"
+description = "lunaconf is a Python library to support easy-to-understand configuration for evaluations"
+readme = "README.md"
+authors = [
+    { name = "Wenrui Huang", email = "rijuyuezhuhwr@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "argparse>=1.4.0",
+    "pydantic>2",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.13,<0.9.0"]
+build-backend = "uv_build"
