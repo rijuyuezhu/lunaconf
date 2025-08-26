@@ -1,5 +1,5 @@
-from lunaeval.config_base import LunaConf
-from lunaeval.cli import lunaconf_cli
+from lunaconf.config_base import LunaConf
+from lunaconf.cli import lunaconf_cli
 
 __all__ = [
     "LunaConf",

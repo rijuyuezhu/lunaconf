@@ -1,15 +1,15 @@
 import json
 from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
     Type,
     TypeVar,
-    List,
-    Tuple,
-    Dict,
-    Any,
     Union,
-    Callable,
-    Sequence,
-    Optional,
 )
 
 import argparse
@@ -18,52 +18,72 @@ from lunaconf.config_base import LunaConf
 
 
 def adjust_conf(
-    now: Union[List[Any], Dict[str, Any]], keys: List[str], value: Any
-) -> None:
+    now: Union[List[Any], Dict[str, Any], None], keys: List[str], value: Any
+) -> Union[List[Any], Dict[str, Any]]:
     if not keys:
-        return
+        raise ValueError("Keys cannot be empty")
     key = keys[0]
     if len(keys) == 1:
-        if key.isdigit() and isinstance(now, list):
+        if key.isdigit():
+            if now is None:
+                now = []
+            if not isinstance(now, list):
+                raise TypeError(f"Expected list but got {type(now)}")
             index = int(key)
             if value is None:
                 if index < len(now):
                     del now[index]
-                    while now and now[-1] is None:
-                        now.pop()
             else:
                 if index >= len(now):
                     # fill with None
                     now.extend([None] * (index - len(now) + 1))
                 now[index] = value
-        elif key.isidentifier() and isinstance(now, dict):
+        elif key.isidentifier():
+            if now is None:
+                now = {}
+            if not isinstance(now, dict):
+                raise TypeError(f"Expected dict but got {type(now)}")
             now[key] = value
         else:
             raise TypeError(f"Cannot set value for key '{key}' in {type(now)}")
     else:
-        if key.isdigit() and isinstance(now, list):
+        if key.isdigit():
+            if now is None:
+                now = []
+            if not isinstance(now, list):
+                raise TypeError(f"Expected list but got {type(now)}")
             index = int(key)
-            if index >= len(now):
-                now.extend([None] * (index - len(now) + 1))
-            obj = now[index]
-        elif key.isidentifier() and isinstance(now, dict):
-            obj = now[key]
+            if value is None:
+                if index < len(now):
+                    del now[index]
+            else:
+                if index >= len(now):
+                    # fill with None
+                    now.extend([None] * (index - len(now) + 1))
+            now[index] = adjust_conf(now[index], keys[1:], value)
+        elif key.isidentifier():
+            if now is None:
+                now = {}
+            if not isinstance(now, dict):
+                raise TypeError(f"Expected dict but got {type(now)}")
+            now[key] = adjust_conf(now[key], keys[1:], value)
         else:
             raise TypeError(f"Cannot set value for key '{key}' in {type(now)}")
-        adjust_conf(obj, keys[1:], value)
+    return now
 
 
 def adjust_conf_str(config_dict: Dict[str, Any], cmdline: str) -> None:
-    for cmd in map(str.strip, cmdline.split(";")):
+    for cmd in (s.strip() for s in cmdline.split(";")):
         if cmd.count("=") != 1:
             raise ValueError(f"Invalid command format: {cmd}")
-        key_str, value_str = list(map(str.strip, cmd.split("=")))
-        keys = list(map(str.strip, key_str.split(".")))
+        key_str, value_str = (s.strip() for s in cmd.split("="))
+        keys = [s.strip() for s in key_str.split(".")]
 
         try:
             value = json.loads(value_str)
         except (TypeError, json.JSONDecodeError):
             if value_str.startswith("[") and value_str.endswith("]"):
+                # add support for json format with list the top level
                 try:
                     value = json.loads(f'{{"object": {value_str}}}')["object"]
                 except json.JSONDecodeError:
@@ -135,14 +155,15 @@ def lunaconf_cli(
     argspace = parser.parse_args(args)
 
     config_dict: Dict[str, Any]
+
     if argspace.json:
         with open(argspace.json) as f:
             config_dict = json.load(f)
     else:
-        config = cls.__lunaconf_default__()
-        config_dict = config.model_dump()
+        config_dict = cls.__lunaconf_default__().model_dump()
 
     command_list: List[Tuple[str, str]] = argspace.command_list or []
+
     for tag, cmd in command_list:
         if tag == "str":
             adjust_conf_str(config_dict, cmd)
