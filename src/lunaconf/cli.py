@@ -2,14 +2,8 @@ import json
 from typing import (
     Any,
     Callable,
-    Dict,
-    List,
-    Optional,
     Sequence,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
 )
 
 import argparse
@@ -18,8 +12,8 @@ from lunaconf.config_base import LunaConf
 
 
 def adjust_conf(
-    now: Union[List[Any], Dict[str, Any], None], keys: List[str], value: Any
-) -> Union[List[Any], Dict[str, Any]]:
+    now: list[Any] | dict[str, Any] | None, keys: list[str], value: Any
+) -> list[Any] | dict[str, Any]:
     if not keys:
         raise ValueError("Keys cannot be empty")
     key = keys[0]
@@ -72,7 +66,7 @@ def adjust_conf(
     return now
 
 
-def adjust_conf_str(config_dict: Dict[str, Any], cmdline: str) -> None:
+def adjust_conf_str(config_dict: dict[str, Any], cmdline: str) -> None:
     for cmd in (s.strip() for s in cmdline.split(";")):
         if cmd.count("=") != 1:
             raise ValueError(f"Invalid command format: {cmd}")
@@ -94,7 +88,7 @@ def adjust_conf_str(config_dict: Dict[str, Any], cmdline: str) -> None:
         adjust_conf(config_dict, keys, value)
 
 
-def extend_action_with_tag(tag: str) -> Type[argparse.Action]:
+def extend_action_with_tag(tag: str) -> type[argparse.Action]:
     class ExtendActionWithTag(argparse._ExtendAction):
         def __call__(self, parser, namespace, values, option_string=None):
             fix_values = [(tag, v) for v in values]  # type: ignore
@@ -107,8 +101,8 @@ T = TypeVar("T", bound=LunaConf)
 
 
 def lunaconf_cli(
-    cls: Type[T],
-    args: Optional[Sequence[str]] = None,
+    cls: type[T],
+    args: Sequence[str] | None = None,
     *,
     description: str = "Generate configuration",
     indent: int = 2,
@@ -154,7 +148,7 @@ def lunaconf_cli(
 
     argspace = parser.parse_args(args)
 
-    config_dict: Dict[str, Any]
+    config_dict: dict[str, Any]
 
     if argspace.json:
         with open(argspace.json) as f:
@@ -162,7 +156,7 @@ def lunaconf_cli(
     else:
         config_dict = cls.__lunaconf_default__().model_dump()
 
-    command_list: List[Tuple[str, str]] = argspace.command_list or []
+    command_list: list[tuple[str, str]] = argspace.command_list or []
 
     for tag, cmd in command_list:
         if tag == "str":
