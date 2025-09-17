@@ -1,9 +1,9 @@
 import tempfile
+from typing import Self
 
-from lunaconf import LunaConf, lunaconf_cli
 from pydantic import Field
 
-from typing import Self
+from lunaconf import LunaConf, lunaconf_cli
 
 
 def gen_tf(content: str) -> str:

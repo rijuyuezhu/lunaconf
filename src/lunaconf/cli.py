@@ -1,5 +1,6 @@
 import argparse
 import json
+from collections.abc import Sequence
 from typing import Any, Callable, Literal, TypeAlias, TypeVar
 
 import toml
@@ -158,7 +159,7 @@ T = TypeVar("T", bound=LunaConf)
 
 def lunaconf_gendict(
     config_dict: dict[str, Any],
-    args: list[str] | None = None,
+    args: Sequence[str] | None = None,
     *,
     parser: argparse.ArgumentParser | None = None,
 ) -> argparse.Namespace:
@@ -243,7 +244,7 @@ def lunaconf_gendict(
 
 def lunaconf_cli(
     cls: type[T],
-    args: list[str] | None = None,
+    args: Sequence[str] | None = None,
     *,
     description: str = "Generate configuration",
     post_action_with_all: Callable[[T], None] = lambda _: None,
@@ -292,7 +293,7 @@ def lunaconf_cli(
     if argspace.print_json:
         print(
             config.model_dump_json(
-                indent=indent,
+                indent=argspace.json_indent,
                 exclude_defaults=not argspace.all,
             )
         )
