@@ -77,6 +77,7 @@ It provides the following interfaces:
   - `command` positional arguments: specify the modifications to the configuration in the form of `key1.key2=value1; key3.key4=value2` etc. The `.` can be used to access nested fields and list indices.
   - `-j <json_str> / -J <json_file>`: specify the JSON to overload the configuration.
   - `-t <toml_str> / -T <toml_file>`: specify the TOML to overload the configuration.
+  - `-d <str> / -D <file>`: detect the format of the string/file and parse it accordingly. It will first try to parse it as JSON, if it fails, it will try to parse it as TOML. If both fail, an error will be raised.
   - `-C <file>`: the extra configuration file. This file contains command line arguments (one group per line) that will be parsed interleaved with the other command line arguments. Lines starting with `#` are treated as comments and ignored.
   - `-a`: whether or not output all fields with `-p / -P` flags, and also affect the application of `post_action_with_all` or `post_action_without_all` callables passed to `lunaconf_cli`.
   - `-p`: print the final configuration in JSON and exit.

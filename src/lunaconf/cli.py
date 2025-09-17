@@ -134,7 +134,14 @@ def adjust_conf_multilevel_data_structure(
 
 
 _AvaliTag: TypeAlias = Literal[
-    "command", "command-file", "json", "json-file", "toml", "toml-file"
+    "command",
+    "command-file",
+    "json",
+    "json-file",
+    "toml",
+    "toml-file",
+    "detect",
+    "detect-file",
 ]
 
 
@@ -215,6 +222,22 @@ def lunaconf_gendict(
         action=append_action_with_tag("toml-file"),
         help="Path to the configuration file in TOML format, used to overload the default configuration",
     )
+    parser.add_argument(
+        "-d",
+        "--detect",
+        dest="command",
+        type=str,
+        action=append_action_with_tag("detect"),
+        help="Detect the format of the string and parse it accordingly",
+    )
+    parser.add_argument(
+        "-D",
+        "--detect-file",
+        dest="command",
+        type=str,
+        action=append_action_with_tag("detect-file"),
+        help="Detect the format of the file and parse it accordingly",
+    )
 
     argspace = parser.parse_args(args)
     command: list[tuple[_AvaliTag, str]] = argspace.command or []
@@ -225,19 +248,29 @@ def lunaconf_gendict(
                 adjust_conf_command(config_dict, arg)
             case "command-file":
                 adjust_conf_command_file(config_dict, arg)
-            case "json":
+            case "json" | "json-file":
+                if tag == "json-file":
+                    with open(arg) as f:
+                        arg = f.read()
                 d = json.loads(arg)
                 adjust_conf_multilevel_data_structure(config_dict, d)
-            case "json-file":
-                with open(arg) as f:
-                    d = json.load(f)
-                adjust_conf_multilevel_data_structure(config_dict, d)
-            case "toml":
+            case "toml" | "toml-file":
+                if tag == "toml-file":
+                    with open(arg) as f:
+                        arg = f.read()
                 d = toml.loads(arg)
                 adjust_conf_multilevel_data_structure(config_dict, d)
-            case "toml-file":
-                with open(arg) as f:
-                    d = toml.load(f)
+            case "detect" | "detect-file":
+                if tag == "detect-file":
+                    with open(arg) as f:
+                        arg = f.read()
+                try:
+                    d = json.loads(arg)
+                except (TypeError, json.JSONDecodeError):
+                    try:
+                        d = toml.loads(arg)
+                    except toml.TomlDecodeError:
+                        raise ValueError("Cannot detect the format of the string")
                 adjust_conf_multilevel_data_structure(config_dict, d)
             case _:
                 raise ValueError(f"Unknown tag: {tag}")

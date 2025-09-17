@@ -94,7 +94,8 @@ v = "another_value"
 def test_commands():
     patch1 = gen_tf(
         """\
-name=what; age=200
+name=what; age=200 # this is a comment
+# then the tag
 tags.0.k=key1; tags.0.v=value1
 """
     )
@@ -115,6 +116,23 @@ age = 40
 -C {patch1}
 -J {patch2}
 -T {patch3}
+tags.0.k=what
+"""
+    )
+    args = ["-C", argfile]
+    conf = lunaconf_cli(FullConf, args)
+    expected = FullConf(
+        name="another_name",
+        age=40,
+        tags=[TagConf(k="what", v="value1")],
+    )
+    assert conf == expected
+
+    argfile = gen_tf(
+        f"""\
+-C {patch1}
+-D {patch2}
+-D {patch3}
 tags.0.k=what
 """
     )
