@@ -145,6 +145,8 @@ def extend_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
             super().__call__(parser, namespace, fix_values, option_string)
 
     return ExtendActionWithTag
+
+
 def append_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
     class AppendActionWithTag(argparse._AppendAction):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -246,6 +248,7 @@ def lunaconf_cli(
     cls: type[T],
     args: Sequence[str] | None = None,
     *,
+    init_from_defaults: bool = True,
     description: str = "Generate configuration",
     post_action_with_all: Callable[[T], None] = lambda _: None,
     post_action_without_all: Callable[[T], None] = lambda _: None,
@@ -275,7 +278,11 @@ def lunaconf_cli(
         action="store_true",
         help="Print the generated configuration in TOML format and exit",
     )
-    config_dict: dict[str, Any] = {}
+    config_dict: dict[str, Any]
+    if init_from_defaults:
+        config_dict = cls.__lunaconf_default__().model_dump()
+    else:
+        config_dict = {}
 
     argspace = lunaconf_gendict(
         config_dict,
