@@ -83,6 +83,15 @@ It provides the following interfaces:
   - `-p`: print the final configuration in JSON and exit.
   - `-P`: print the final configuration in TOML and exit.
 
+## Special Values
+The following special values can be used in the command line arguments to represent certain Python values, and are output in some cases for unsupported values in JSON/TOML:
+
+- Input `<null>` leads to `None`; TOML will output `<null>` for `None`.
+- Input `<del>` to delete element in an array, or reset the field to its default.
+- Input `<inf>`, `<-inf>`, `<nan>` lead to `float('inf')`, `float('-inf')`, `float('nan')` respectively; JSON will output `<inf>`, `<-inf>`, `<nan>` for these values.
+
+Strings inside the angle brackets are case-insensitive.
+
 # Examples
 
 For more examples, please refer to the unit tests in the `tests` folder.
