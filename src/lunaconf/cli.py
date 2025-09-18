@@ -7,6 +7,8 @@ import toml
 
 from lunaconf.config_base import LunaConf
 
+_DEL_OBJ = object()
+
 
 def adjust_conf(
     now: list[Any] | dict[str, Any] | None,
@@ -23,7 +25,7 @@ def adjust_conf(
             if not isinstance(now, list):
                 raise TypeError(f"Expected list but got {type(now)}")
             index = int(key)
-            if value == "<DEL>":
+            if value is _DEL_OBJ:
                 if index < len(now):
                     del now[index]
             else:
@@ -36,7 +38,7 @@ def adjust_conf(
                 now = {}
             if not isinstance(now, dict):
                 raise TypeError(f"Expected dict but got {type(now)}")
-            if value == "<DEL>":
+            if value is _DEL_OBJ:
                 if key in now:
                     del now[key]
             else:
@@ -67,6 +69,34 @@ def adjust_conf(
     return now
 
 
+def _handle_special_value(value: Any) -> tuple[Any, bool]:
+    if isinstance(value, str):
+        if value.lower() == "<null>":
+            return None, True
+        elif value.lower() == "<del>":
+            return _DEL_OBJ, True
+    return value, False
+
+
+def _parse_command_value(value_str: str) -> Any:
+    value_str, success = _handle_special_value(value_str)
+    if success:
+        return value_str
+
+    try:
+        return json.loads(value_str)
+    except (TypeError, json.JSONDecodeError):
+        pass
+
+    if value_str.startswith("[") and value_str.endswith("]"):
+        # add support for json format with list as the top level
+        try:
+            return json.loads(f'{{"object": {value_str}}}')["object"]
+        except (TypeError, json.JSONDecodeError):
+            pass
+    return value_str
+
+
 def adjust_conf_command(config_dict: dict[str, Any], cmdline: str) -> None:
     for cmd in (s.strip() for s in cmdline.split(";")):
         if cmd.count("=") != 1:
@@ -74,17 +104,7 @@ def adjust_conf_command(config_dict: dict[str, Any], cmdline: str) -> None:
         key_str, value_str = (s.strip() for s in cmd.split("="))
         keys = [s.strip() for s in key_str.split(".")]
 
-        try:
-            value = json.loads(value_str)
-        except (TypeError, json.JSONDecodeError):
-            if value_str.startswith("[") and value_str.endswith("]"):
-                # add support for json format with list as the top level
-                try:
-                    value = json.loads(f'{{"object": {value_str}}}')["object"]
-                except json.JSONDecodeError:
-                    value = value_str
-            else:
-                value = value_str
+        value = _parse_command_value(value_str)
 
         adjust_conf(config_dict, keys, value)
 
@@ -119,6 +139,7 @@ def adjust_conf_multilevel_data_structure(
             if isinstance(v, (dict, list)):
                 adjust_conf_multilevel_data_structure(config_dict, v, prefix)
             else:
+                v, _ = _handle_special_value(v)
                 adjust_conf(config_dict, prefix, v)
             prefix.pop()
     elif isinstance(obj, list):
@@ -127,6 +148,7 @@ def adjust_conf_multilevel_data_structure(
             if isinstance(v, (dict, list)):
                 adjust_conf_multilevel_data_structure(config_dict, v, prefix)
             else:
+                v, _ = _handle_special_value(v)
                 adjust_conf(config_dict, prefix, v)
             prefix.pop()
     else:
@@ -145,7 +167,7 @@ _AvaliTag: TypeAlias = Literal[
 ]
 
 
-def extend_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
+def _extend_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
     class ExtendActionWithTag(argparse._ExtendAction):
         def __call__(self, parser, namespace, values, option_string=None):
             fix_values = [(tag, v) for v in values]  # type: ignore
@@ -154,7 +176,7 @@ def extend_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
     return ExtendActionWithTag
 
 
-def append_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
+def _append_action_with_tag(tag: _AvaliTag) -> type[argparse.Action]:
     class AppendActionWithTag(argparse._AppendAction):
         def __call__(self, parser, namespace, values, option_string=None):
             fix_v = (tag, values)  # type: ignore
@@ -179,7 +201,7 @@ def lunaconf_gendict(
         "command",
         type=str,
         nargs="*",
-        action=extend_action_with_tag("command"),
+        action=_extend_action_with_tag("command"),
         help="Command to adjust configuration, of the format `key1.key2=value1; key3.key4=value2`",
     )
     parser.add_argument(
@@ -187,7 +209,7 @@ def lunaconf_gendict(
         "--command-file",
         dest="command",
         type=str,
-        action=append_action_with_tag("command-file"),
+        action=_append_action_with_tag("command-file"),
         help="Command file to adjust configuration, with content that serves as command line arguments",
     )
     parser.add_argument(
@@ -195,7 +217,7 @@ def lunaconf_gendict(
         "--json",
         dest="command",
         type=str,
-        action=append_action_with_tag("json"),
+        action=_append_action_with_tag("json"),
         help="String in JSON format, used to overload the default configuration",
     )
     parser.add_argument(
@@ -203,7 +225,7 @@ def lunaconf_gendict(
         "--json-file",
         dest="command",
         type=str,
-        action=append_action_with_tag("json-file"),
+        action=_append_action_with_tag("json-file"),
         help="Path to the configuration file in JSON format, used to overload the default configuration",
     )
     parser.add_argument(
@@ -211,7 +233,7 @@ def lunaconf_gendict(
         "--toml",
         dest="command",
         type=str,
-        action=append_action_with_tag("toml"),
+        action=_append_action_with_tag("toml"),
         help="String in TOML format, used to overload the default configuration",
     )
     parser.add_argument(
@@ -219,7 +241,7 @@ def lunaconf_gendict(
         "--toml-file",
         dest="command",
         type=str,
-        action=append_action_with_tag("toml-file"),
+        action=_append_action_with_tag("toml-file"),
         help="Path to the configuration file in TOML format, used to overload the default configuration",
     )
     parser.add_argument(
@@ -227,7 +249,7 @@ def lunaconf_gendict(
         "--detect",
         dest="command",
         type=str,
-        action=append_action_with_tag("detect"),
+        action=_append_action_with_tag("detect"),
         help="Detect the format of the string and parse it accordingly",
     )
     parser.add_argument(
@@ -235,7 +257,7 @@ def lunaconf_gendict(
         "--detect-file",
         dest="command",
         type=str,
-        action=append_action_with_tag("detect-file"),
+        action=_append_action_with_tag("detect-file"),
         help="Detect the format of the file and parse it accordingly",
     )
 
@@ -275,6 +297,23 @@ def lunaconf_gendict(
             case _:
                 raise ValueError(f"Unknown tag: {tag}")
     return argspace
+
+
+def _fix_null_values_in_toml(d: dict[str, Any] | list[Any]) -> None:
+    if isinstance(d, dict):
+        for k, v in d.items():
+            if v is None:
+                d[k] = "<null>"
+            elif isinstance(v, (list, dict)):
+                _fix_null_values_in_toml(v)
+    elif isinstance(d, list):
+        for i, v in enumerate(d):
+            if v is None:
+                d[i] = "<null>"
+            elif isinstance(v, (list, dict)):
+                _fix_null_values_in_toml(v)
+    else:
+        raise TypeError(f"Expected dict or list but got {type(d)}")
 
 
 def lunaconf_cli(
@@ -342,6 +381,7 @@ def lunaconf_cli(
         dump_dict = config.model_dump(
             exclude_defaults=not argspace.all,
         )
+        _fix_null_values_in_toml(dump_dict)
         print(toml.dumps(dump_dict))
         exit(0)
     return config

@@ -99,3 +99,43 @@ def test_optional_field():
     conf = lunaconf.lunaconf_cli(Conf, args)
     assert conf.inner is not None
     assert conf.inner.param1 == 32
+
+
+def test_special_value():
+    class ConfInner(lunaconf.LunaConf):
+        param1: int = 42
+        param2: str = "hello"
+        param3: int | None = 23
+        array: list[int] = Field(default_factory=lambda: [1, 2, 3])
+
+    class Conf(lunaconf.LunaConf):
+        inner: ConfInner | None = None
+
+        @classmethod
+        def __lunaconf_default__(cls) -> Self:
+            return cls(inner=ConfInner())
+
+    args = []
+    conf = lunaconf.lunaconf_cli(Conf, args)
+    expected = Conf(
+        inner=ConfInner(
+            param1=42,
+            param2="hello",
+            param3=23,
+            array=[1, 2, 3],
+        )
+    )
+    assert conf == expected
+
+    args = ["inner.param3=<NULL>", "inner.param2=what", "inner.array.1=<DEL>"]
+    conf = lunaconf.lunaconf_cli(Conf, args)
+    expected = Conf(
+        inner=ConfInner(
+            param1=42,
+            param2="what",
+            param3=None,
+            array=[1, 3],
+        )
+    )
+
+    assert conf == expected
