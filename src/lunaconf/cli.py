@@ -1,12 +1,12 @@
 import argparse
 import json
-import math
 from collections.abc import Sequence
 from typing import Any, Callable, Literal, TypeAlias, TypeVar
 
 import toml
 
 from lunaconf.config_base import LunaConf
+from lunaconf.dump import lunaconf_dumps_json, lunaconf_dumps_toml
 
 _DEL_OBJ = object()
 
@@ -308,50 +308,6 @@ def lunaconf_gendict(
     return argspace
 
 
-def _fix_null_values_in_json(d: dict[str, Any] | list[Any]) -> None:
-    if isinstance(d, dict):
-        for k, v in d.items():
-            if isinstance(v, float):
-                if math.isnan(v):
-                    d[k] = "<nan>"
-                elif v == float("inf"):
-                    d[k] = "<inf>"
-                elif v == float("-inf"):
-                    d[k] = "<-inf>"
-            elif isinstance(v, (list, dict)):
-                _fix_null_values_in_json(v)
-    elif isinstance(d, list):
-        for i, v in enumerate(d):
-            if isinstance(v, float):
-                if math.isnan(v):
-                    d[i] = "<nan>"
-                elif v == float("inf"):
-                    d[i] = "<inf>"
-                elif v == float("-inf"):
-                    d[i] = "<-inf>"
-            elif isinstance(v, (list, dict)):
-                _fix_null_values_in_json(v)
-    else:
-        raise TypeError(f"Expected dict or list but got {type(d)}")
-
-
-def _fix_null_values_in_toml(d: dict[str, Any] | list[Any]) -> None:
-    if isinstance(d, dict):
-        for k, v in d.items():
-            if v is None:
-                d[k] = "<null>"
-            elif isinstance(v, (list, dict)):
-                _fix_null_values_in_toml(v)
-    elif isinstance(d, list):
-        for i, v in enumerate(d):
-            if v is None:
-                d[i] = "<null>"
-            elif isinstance(v, (list, dict)):
-                _fix_null_values_in_toml(v)
-    else:
-        raise TypeError(f"Expected dict or list but got {type(d)}")
-
-
 def lunaconf_cli(
     cls: type[T],
     args: Sequence[str] | None = None,
@@ -406,24 +362,20 @@ def lunaconf_cli(
         post_action_without_all(config)
 
     if argspace.print_json:
-        dump_dict = config.model_dump(
-            exclude_defaults=not argspace.all,
-        )
-        _fix_null_values_in_json(dump_dict)
         print(
-            json.dumps(
-                dump_dict,
+            lunaconf_dumps_json(
+                config,
                 indent=argspace.json_indent,
-                ensure_ascii=False,
-                allow_nan=False,
+                exclude_defaults=not argspace.all,
             )
         )
         exit(0)
     elif argspace.print_toml:
-        dump_dict = config.model_dump(
-            exclude_defaults=not argspace.all,
+        print(
+            lunaconf_dumps_toml(
+                config,
+                exclude_defaults=not argspace.all,
+            )
         )
-        _fix_null_values_in_toml(dump_dict)
-        print(toml.dumps(dump_dict))
         exit(0)
     return config
