@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 from collections.abc import Sequence
 from typing import Any, Callable, Literal, TypeAlias, TypeVar
 
@@ -71,10 +72,18 @@ def adjust_conf(
 
 def _handle_special_value(value: Any) -> tuple[Any, bool]:
     if isinstance(value, str):
-        if value.lower() == "<null>":
-            return None, True
-        elif value.lower() == "<del>":
-            return _DEL_OBJ, True
+        match value.lower():
+            case "<null>":
+                return None, True
+            case "<del>":
+                return _DEL_OBJ, True
+            case "<inf>":
+                return float("inf"), True
+            case "<-inf>":
+                return float("-inf"), True
+            case "<nan>":
+                return float("nan"), True
+
     return value, False
 
 
@@ -299,6 +308,33 @@ def lunaconf_gendict(
     return argspace
 
 
+def _fix_null_values_in_json(d: dict[str, Any] | list[Any]) -> None:
+    if isinstance(d, dict):
+        for k, v in d.items():
+            if isinstance(v, float):
+                if math.isnan(v):
+                    d[k] = "<nan>"
+                elif v == float("inf"):
+                    d[k] = "<inf>"
+                elif v == float("-inf"):
+                    d[k] = "<-inf>"
+            elif isinstance(v, (list, dict)):
+                _fix_null_values_in_json(v)
+    elif isinstance(d, list):
+        for i, v in enumerate(d):
+            if isinstance(v, float):
+                if math.isnan(v):
+                    d[i] = "<nan>"
+                elif v == float("inf"):
+                    d[i] = "<inf>"
+                elif v == float("-inf"):
+                    d[i] = "<-inf>"
+            elif isinstance(v, (list, dict)):
+                _fix_null_values_in_json(v)
+    else:
+        raise TypeError(f"Expected dict or list but got {type(d)}")
+
+
 def _fix_null_values_in_toml(d: dict[str, Any] | list[Any]) -> None:
     if isinstance(d, dict):
         for k, v in d.items():
@@ -370,10 +406,16 @@ def lunaconf_cli(
         post_action_without_all(config)
 
     if argspace.print_json:
+        dump_dict = config.model_dump(
+            exclude_defaults=not argspace.all,
+        )
+        _fix_null_values_in_json(dump_dict)
         print(
-            config.model_dump_json(
+            json.dumps(
+                dump_dict,
                 indent=argspace.json_indent,
-                exclude_defaults=not argspace.all,
+                ensure_ascii=False,
+                allow_nan=False,
             )
         )
         exit(0)
