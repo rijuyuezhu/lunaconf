@@ -7,31 +7,31 @@ import toml
 from lunaconf.config_base import LunaConf
 
 
-def _fix_null_values_in_json(d: dict[str, Any] | list[Any]) -> None:
-    if isinstance(d, dict):
-        for k, v in d.items():
+def _handle_special_values_dump_json(obj: dict[str, Any] | list[Any]) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
             if isinstance(v, float):
                 if math.isnan(v):
-                    d[k] = "<nan>"
+                    obj[k] = "<nan>"
                 elif v == float("inf"):
-                    d[k] = "<inf>"
+                    obj[k] = "<inf>"
                 elif v == float("-inf"):
-                    d[k] = "<-inf>"
+                    obj[k] = "<-inf>"
             elif isinstance(v, (list, dict)):
-                _fix_null_values_in_json(v)
-    elif isinstance(d, list):
-        for i, v in enumerate(d):
+                _handle_special_values_dump_json(v)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
             if isinstance(v, float):
                 if math.isnan(v):
-                    d[i] = "<nan>"
+                    obj[i] = "<nan>"
                 elif v == float("inf"):
-                    d[i] = "<inf>"
+                    obj[i] = "<inf>"
                 elif v == float("-inf"):
-                    d[i] = "<-inf>"
+                    obj[i] = "<-inf>"
             elif isinstance(v, (list, dict)):
-                _fix_null_values_in_json(v)
+                _handle_special_values_dump_json(v)
     else:
-        raise TypeError(f"Expected dict or list but got {type(d)}")
+        raise TypeError(f"Expected dict or list but got {type(obj)}")
 
 
 def lunaconf_dumps_json(
@@ -40,7 +40,7 @@ def lunaconf_dumps_json(
     **kwargs,
 ) -> str:
     dump_dict = config.model_dump(**kwargs)
-    _fix_null_values_in_json(dump_dict)
+    _handle_special_values_dump_json(dump_dict)
     return json.dumps(
         dump_dict,
         indent=indent,
@@ -49,21 +49,21 @@ def lunaconf_dumps_json(
     )
 
 
-def _fix_null_values_in_toml(d: dict[str, Any] | list[Any]) -> None:
-    if isinstance(d, dict):
-        for k, v in d.items():
+def _handle_special_values_dump_toml(obj: dict[str, Any] | list[Any]) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
             if v is None:
-                d[k] = "<null>"
+                obj[k] = "<null>"
             elif isinstance(v, (list, dict)):
-                _fix_null_values_in_toml(v)
-    elif isinstance(d, list):
-        for i, v in enumerate(d):
+                _handle_special_values_dump_toml(v)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
             if v is None:
-                d[i] = "<null>"
+                obj[i] = "<null>"
             elif isinstance(v, (list, dict)):
-                _fix_null_values_in_toml(v)
+                _handle_special_values_dump_toml(v)
     else:
-        raise TypeError(f"Expected dict or list but got {type(d)}")
+        raise TypeError(f"Expected dict or list but got {type(obj)}")
 
 
 def lunaconf_dumps_toml(
@@ -71,5 +71,5 @@ def lunaconf_dumps_toml(
     **kwargs,
 ) -> str:
     dump_dict = config.model_dump(**kwargs)
-    _fix_null_values_in_toml(dump_dict)
+    _handle_special_values_dump_toml(dump_dict)
     return toml.dumps(dump_dict)

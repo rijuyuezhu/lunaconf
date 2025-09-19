@@ -70,40 +70,44 @@ def adjust_conf(
     return now
 
 
-def _handle_special_value(value: Any) -> tuple[Any, bool]:
-    if isinstance(value, str):
-        match value.lower():
+def _handle_special_values(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            obj[k] = _handle_special_values(v)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            obj[i] = _handle_special_values(v)
+    elif isinstance(obj, str):
+        match obj.lower():
             case "<null>":
-                return None, True
+                return None
             case "<del>":
-                return _DEL_OBJ, True
+                return _DEL_OBJ
             case "<inf>":
-                return float("inf"), True
+                return float("inf")
             case "<-inf>":
-                return float("-inf"), True
+                return float("-inf")
             case "<nan>":
-                return float("nan"), True
-
-    return value, False
+                return float("nan")
+    return obj
 
 
 def _parse_command_value(value_str: str) -> Any:
-    value_str, success = _handle_special_value(value_str)
-    if success:
-        return value_str
-
-    try:
-        return json.loads(value_str)
-    except (TypeError, json.JSONDecodeError):
-        pass
-
-    if value_str.startswith("[") and value_str.endswith("]"):
-        # add support for json format with list as the top level
+    def parse_inner(value_str: str) -> Any:
         try:
-            return json.loads(f'{{"object": {value_str}}}')["object"]
+            return json.loads(value_str)
         except (TypeError, json.JSONDecodeError):
             pass
-    return value_str
+
+        if value_str.startswith("[") and value_str.endswith("]"):
+            # add support for json format with list as the top level
+            try:
+                return json.loads(f'{{"object": {value_str}}}')["object"]
+            except (TypeError, json.JSONDecodeError):
+                pass
+        return value_str
+
+    return _handle_special_values(parse_inner(value_str))
 
 
 def adjust_conf_command(config_dict: dict[str, Any], cmdline: str) -> None:
@@ -140,28 +144,34 @@ def adjust_conf_multilevel_data_structure(
     obj: dict[str, Any] | list[Any],
     prefix: list[str] | None = None,
 ) -> None:
-    if prefix is None:
-        prefix = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            prefix.append(k)
-            if isinstance(v, (dict, list)):
-                adjust_conf_multilevel_data_structure(config_dict, v, prefix)
-            else:
-                v, _ = _handle_special_value(v)
-                adjust_conf(config_dict, prefix, v)
-            prefix.pop()
-    elif isinstance(obj, list):
-        for i, v in enumerate(obj):
-            prefix.append(str(i))
-            if isinstance(v, (dict, list)):
-                adjust_conf_multilevel_data_structure(config_dict, v, prefix)
-            else:
-                v, _ = _handle_special_value(v)
-                adjust_conf(config_dict, prefix, v)
-            prefix.pop()
-    else:
-        raise TypeError(f"Expected dict or list but got {type(obj)}")
+    def adjust_inner(
+        config_dict: dict[str, Any],
+        obj: dict[str, Any] | list[Any],
+        prefix: list[str] | None = None,
+    ) -> None:
+        if prefix is None:
+            prefix = []
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                prefix.append(k)
+                if isinstance(v, (dict, list)):
+                    adjust_inner(config_dict, v, prefix)
+                else:
+                    adjust_conf(config_dict, prefix, v)
+                prefix.pop()
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                prefix.append(str(i))
+                if isinstance(v, (dict, list)):
+                    adjust_inner(config_dict, v, prefix)
+                else:
+                    adjust_conf(config_dict, prefix, v)
+                prefix.pop()
+        else:
+            raise TypeError(f"Expected dict or list but got {type(obj)}")
+
+    obj = _handle_special_values(obj)
+    adjust_inner(config_dict, obj, prefix)
 
 
 _AvaliTag: TypeAlias = Literal[
