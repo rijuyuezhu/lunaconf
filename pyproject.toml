@@ -1,6 +1,6 @@
 [project]
 name = "lunaconf"
-version = "0.4.1"
+version = "0.4.2"
 description = "lunaconf is a Python library to support easy-to-understand configuration for evaluations"
 readme = "README.md"
 authors = [
