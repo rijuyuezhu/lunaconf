@@ -152,21 +152,27 @@ def adjust_conf_multilevel_data_structure(
         if prefix is None:
             prefix = []
         if isinstance(obj, dict):
-            for k, v in obj.items():
-                prefix.append(k)
-                if isinstance(v, (dict, list)):
-                    adjust_inner(config_dict, v, prefix)
-                else:
-                    adjust_conf(config_dict, prefix, v)
-                prefix.pop()
+            if len(obj) == 0:
+                adjust_conf(config_dict, prefix, {})
+            else:
+                for k, v in obj.items():
+                    prefix.append(k)
+                    if isinstance(v, (dict, list)):
+                        adjust_inner(config_dict, v, prefix)
+                    else:
+                        adjust_conf(config_dict, prefix, v)
+                    prefix.pop()
         elif isinstance(obj, list):
-            for i, v in enumerate(obj):
-                prefix.append(str(i))
-                if isinstance(v, (dict, list)):
-                    adjust_inner(config_dict, v, prefix)
-                else:
-                    adjust_conf(config_dict, prefix, v)
-                prefix.pop()
+            if len(obj) == 0:
+                adjust_conf(config_dict, prefix, [])
+            else:
+                for i, v in enumerate(obj):
+                    prefix.append(str(i))
+                    if isinstance(v, (dict, list)):
+                        adjust_inner(config_dict, v, prefix)
+                    else:
+                        adjust_conf(config_dict, prefix, v)
+                    prefix.pop()
         else:
             raise TypeError(f"Expected dict or list but got {type(obj)}")
 
