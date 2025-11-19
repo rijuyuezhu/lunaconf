@@ -139,3 +139,16 @@ def test_special_value():
     )
 
     assert conf == expected
+
+
+def test_env():
+    import os
+
+    os.environ["TEST_ENV_VAR"] = "env_value"
+
+    class Conf(lunaconf.LunaConf):
+        param1: str = "default"
+
+    args = ["param1=<env:TEST_ENV_VAR>"]
+    conf = lunaconf.lunaconf_cli(Conf, args)
+    assert conf.param1 == "env_value"

@@ -89,6 +89,14 @@ def _handle_special_values(obj: Any) -> Any:
                 return float("-inf")
             case "<nan>":
                 return float("nan")
+        if obj.lower().startswith("<env:") and obj.lower().endswith(">"):
+            env_var = obj[5:-1]
+            import os
+
+            res = os.getenv(env_var)
+            if res is None:
+                raise ValueError(f"Environment variable '{env_var}' is not set")
+            return res
     return obj
 
 
