@@ -148,7 +148,13 @@ def test_env():
 
     class Conf(lunaconf.LunaConf):
         param1: str = "default"
+        param2: int = 0
 
     args = ["param1=<env:TEST_ENV_VAR>"]
     conf = lunaconf.lunaconf_cli(Conf, args)
     assert conf.param1 == "env_value"
+
+    os.environ["TEST_ENV_VAR_INT"] = "123"
+    args = ["param2=<envint:TEST_ENV_VAR_INT>"]
+    conf = lunaconf.lunaconf_cli(Conf, args)
+    assert conf.param2 == 123

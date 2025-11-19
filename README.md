@@ -89,7 +89,7 @@ The following special values can be used in the command line arguments to repres
 - Input `<null>` leads to `None`; TOML will output `<null>` for `None`.
 - Input `<del>` to delete element in an array, or reset the field to its default.
 - Input `<inf>`, `<-inf>`, `<nan>` lead to `float('inf')`, `float('-inf')`, `float('nan')` respectively; JSON will output `<inf>`, `<-inf>`, `<nan>` for these values.
-- Input `<env:VAR_NAME>` leads to the value of the environment variable `VAR_NAME`. An error is raised if the environment variable is not set.
+- Input `<env:VAR_NAME>` leads to the value of the environment variable `VAR_NAME`. An error is raised if the environment variable is not set. `<envint:VAR_NAME>` is similar but converts the value to an integer, and raises an error if the conversion fails.
 
 Strings inside the angle brackets are case-insensitive.
 

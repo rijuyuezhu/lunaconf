@@ -89,7 +89,8 @@ def _handle_special_values(obj: Any) -> Any:
                 return float("-inf")
             case "<nan>":
                 return float("nan")
-        if obj.lower().startswith("<env:") and obj.lower().endswith(">"):
+        objl = obj.lower()
+        if objl.startswith("<env:") and objl.endswith(">"):
             env_var = obj[5:-1]
             import os
 
@@ -97,6 +98,19 @@ def _handle_special_values(obj: Any) -> Any:
             if res is None:
                 raise ValueError(f"Environment variable '{env_var}' is not set")
             return res
+        if objl.startswith("<envint:") and objl.endswith(">"):
+            env_var = obj[8:-1]
+            import os
+
+            res = os.getenv(env_var)
+            if res is None:
+                raise ValueError(f"Environment variable '{env_var}' is not set")
+            try:
+                return int(res)
+            except ValueError:
+                raise ValueError(
+                    f"Environment variable '{env_var}' cannot be converted to int"
+                )
     return obj
 
 
