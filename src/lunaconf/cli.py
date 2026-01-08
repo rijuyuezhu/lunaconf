@@ -21,10 +21,8 @@ def adjust_conf(
     key = keys[0]
     if len(keys) == 1:
         if key.isdigit():
-            if now is None:
+            if now is None or not isinstance(now, list):
                 now = []
-            if not isinstance(now, list):
-                raise TypeError(f"Expected list but got {type(now)}")
             index = int(key)
             if value is _DEL_OBJ:
                 if index < len(now):
@@ -35,10 +33,8 @@ def adjust_conf(
                     now.extend([None] * (index - len(now) + 1))
                 now[index] = value
         elif key.isidentifier():
-            if now is None:
+            if now is None or not isinstance(now, dict):
                 now = {}
-            if not isinstance(now, dict):
-                raise TypeError(f"Expected dict but got {type(now)}")
             if value is _DEL_OBJ:
                 if key in now:
                     del now[key]
@@ -48,20 +44,16 @@ def adjust_conf(
             raise TypeError(f"Cannot set value for key '{key}' in {type(now)}")
     else:
         if key.isdigit():
-            if now is None:
+            if now is None or not isinstance(now, list):
                 now = []
-            if not isinstance(now, list):
-                raise TypeError(f"Expected list but got {type(now)}")
             index = int(key)
             if index >= len(now):
                 # fill with None
                 now.extend([None] * (index - len(now) + 1))
             now[index] = adjust_conf(now[index], keys[1:], value)
         elif key.isidentifier():
-            if now is None:
+            if now is None or not isinstance(now, dict):
                 now = {}
-            if not isinstance(now, dict):
-                raise TypeError(f"Expected dict but got {type(now)}")
             if key not in now:
                 now[key] = None
             now[key] = adjust_conf(now[key], keys[1:], value)
@@ -107,10 +99,10 @@ def _handle_special_values(obj: Any) -> Any:
                 raise ValueError(f"Environment variable '{env_var}' is not set")
             try:
                 return int(res)
-            except ValueError:
+            except ValueError as e:
                 raise ValueError(
                     f"Environment variable '{env_var}' cannot be converted to int"
-                )
+                ) from e
     return obj
 
 
